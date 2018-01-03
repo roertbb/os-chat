@@ -58,8 +58,8 @@ void handle_login() {
                 //already logged in
                 rm.type = cm.pid;
                 rm.feedback = 2;
-                //check how many times pid tried to login
                 printf("attempt to login as %s, but already logged in\n", users[i]);
+                //[TODO]check how many times pid tried to login
                 msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
                 return;
             }
@@ -78,8 +78,27 @@ void handle_login() {
     rm.type = cm.pid;
     rm.feedback = 0;
     printf("unsuccessful login by %d\n", cm.pid);
+    //[TODO]check how many times pid tried to login
+    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);    
+}
+
+void handle_logout() {
+    int i;
+    for (i=0; i<num_of_users; i++) {
+        if (strcmp(cm.receiver,users[i]) == 0) {
+            rm.type = cm.pid;
+            rm.feedback = 1;
+            user_status[i] = 0;
+            printf("user %s logged out\n", users[i]);
+            msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+            return;
+        }
+    }
+    //something went wrong
+    rm.type = cm.pid;
+    rm.feedback = 0;
+    printf("user %s couldn't log out\n", users[i]);
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
-    //check how many times pid tried to login
 }
 
 int main() {
@@ -105,6 +124,9 @@ int main() {
         switch(cm.type) {
             case 1:
                 handle_login();
+                break;
+            case 2:
+                handle_logout();
                 break;
         }
     }

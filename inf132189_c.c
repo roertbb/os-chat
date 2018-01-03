@@ -23,6 +23,7 @@ int login() {
     }
     else if (rm.feedback == 1) {
         printf("Login Successful, welcome to chat\n");
+        return 0;
     }
     else if (rm.feedback == 2) {
         printf("User already logged in\n");
@@ -30,7 +31,21 @@ int login() {
     }
     else if (rm.feedback == 3) {
         printf("Reached unsuccessful login limit\n");
-        exit(0);
+        return 1;
+    }
+}
+
+int logout() {
+    cm.type = 2;
+    cm.pid = getpid();
+    msgsnd(msgid_client, &cm, sizeof(cm)-sizeof(long), 0);
+    msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), getpid(), 0);
+    if (rm.feedback == 1) {
+        printf("Successfully logged out\n");
+        return 1;
+    } 
+    else {
+        printf("Unsuccessfully logged out\n");
     }
 }
 
@@ -39,11 +54,12 @@ int main() {
     msgid_client = msgget(CLIENT, IPC_CREAT|0644);
     msgid_report = msgget(REPORT, IPC_CREAT|0644);
 
-    login();
-    
-    // cm.type = 1;
-    // strcpy(cm.text,"Hello");
-    // msgsnd(msgid_server, &cm, sizeof(cm)-sizeof(long),0);
+    int n = login();
 
-    while(1);
+    while(n == 0) {
+        printf("loop\n");
+        n = logout();
+    }
+
+    printf("kthxbye\n");
 }
