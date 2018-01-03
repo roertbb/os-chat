@@ -6,6 +6,9 @@ char groups[10][8];
 int num_of_users = 0,
     num_of_groups = 0;
 
+int msgid_s, //server 1234
+    msgid_c; //client 4321
+
 void init() {
     char buf[8];
     FILE *f;
@@ -40,8 +43,23 @@ void init() {
     // }
 }
 
+client_msg cm;
+server_msg sm;
+
 int main() {
     init();
 
-    
+    //deleting message queues
+    msgid_s = msgget(SERVER, IPC_CREAT|0644); 
+    msgid_c = msgget(CLIENT, IPC_CREAT|0644);
+    msgctl(msgid_s,IPC_RMID,NULL);
+    msgctl(msgid_c,IPC_RMID,NULL);
+
+    msgid_s = msgget(SERVER, IPC_CREAT|0644); 
+    msgid_c = msgget(CLIENT, IPC_CREAT|0644);
+
+    msgrcv(msgid_s, &cm, sizeof(cm)-sizeof(long), 1, 0);
+    printf("%s\n",cm.text);
+
+    while(1);
 }
