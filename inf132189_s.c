@@ -3,13 +3,20 @@
 char users[20][8];
 char groups[10][8];
 
+int user_status[20] = {0};
+
 int num_of_users = 0,
     num_of_groups = 0;
 
-int msgid_s, //server 1234
-    msgid_c; //client 4321
+int msgid_server, //server 1234
+    msgid_client, //client 1235
+    msgid_report; //report 1236
 
-void init() {
+client_msg cm;
+server_msg sm;
+report_msg rm;
+
+void load_config() {
     char buf[8];
     FILE *f;
     f = fopen("config", "r");
@@ -43,22 +50,65 @@ void init() {
     // }
 }
 
-client_msg cm;
-server_msg sm;
+void handle_login() {
+    int i;
+    for (i=0; i<num_of_users; i++) {
+        if (strcmp(cm.receiver,users[i]) == 0) {
+            if (user_status[i] > 0) {
+                //already logged in
+                rm.type = cm.pid;
+                rm.feedback = 2;
+                //check how many times pid tried to login
+                printf("attempt to login as %s, but already logged in\n", users[i]);
+                msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+                return;
+            }
+            else {
+                //login
+                rm.type = cm.pid;
+                rm.feedback = 1;
+                printf("user %s logged in\n", users[i]);
+                msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+                user_status[i] = cm.pid;
+                return;
+            }
+        } 
+    }
+    //no user with such username
+    rm.type = cm.pid;
+    rm.feedback = 0;
+    printf("unsuccessful login by %d\n", cm.pid);
+    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+    //check how many times pid tried to login
+}
 
 int main() {
-    init();
+    load_config();
 
     //deleting message queues
-    msgid_s = msgget(SERVER, IPC_CREAT|0644); 
-    msgid_c = msgget(CLIENT, IPC_CREAT|0644);
-    msgctl(msgid_s,IPC_RMID,NULL);
-    msgctl(msgid_c,IPC_RMID,NULL);
+    msgid_server = msgget(SERVER, IPC_CREAT|0644); 
+    msgid_client = msgget(CLIENT, IPC_CREAT|0644);
+    msgid_report = msgget(CLIENT, IPC_CREAT|0644);
+    msgctl(msgid_server,IPC_RMID,NULL);
+    msgctl(msgid_client,IPC_RMID,NULL);
+    msgctl(msgid_report,IPC_RMID,NULL);
 
-    msgid_s = msgget(SERVER, IPC_CREAT|0644); 
-    msgid_c = msgget(CLIENT, IPC_CREAT|0644);
+    //creatin new
+    msgid_server = msgget(SERVER, IPC_CREAT|0644); 
+    msgid_client = msgget(CLIENT, IPC_CREAT|0644);
+    msgid_report = msgget(REPORT, IPC_CREAT|0644); 
 
-    msgrcv(msgid_s, &cm, sizeof(cm)-sizeof(long), 1, 0);
+    printf("chat server\n");
+
+    while(1) {
+        msgrcv(msgid_client, &cm, sizeof(cm)-sizeof(long), 0, 0);
+        switch(cm.type) {
+            case 1:
+                handle_login();
+                break;
+        }
+    }
+    msgrcv(msgid_server, &cm, sizeof(cm)-sizeof(long), 1, 0);
     printf("%s\n",cm.text);
 
     while(1);

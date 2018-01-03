@@ -18,7 +18,8 @@
 #include <string.h>
 
 #define SERVER 1234
-#define CLIENT 4321
+#define CLIENT 1235
+#define REPORT 1236
 
 typedef struct client_msg client_msg;
 struct client_msg {
@@ -35,5 +36,18 @@ struct server_msg {
     char sender[8];
     char text[2048];
 };
+
+/*
+1 - login
+2 - logout
+3 - list of logged in users
+*/
+
+typedef struct report_msg report_msg;
+struct report_msg {
+    long type;
+    int feedback;
+};
+
 
 #endif
