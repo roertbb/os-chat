@@ -66,6 +66,29 @@ int receive_user_list() {
     printf("user list:\n%s",sm.text);
 }
 
+int send_user_message() {
+    char username[8];
+    char message[2048];
+    printf("enter username: ");
+    scanf("%s", username);
+    printf("enter message: ");
+    scanf("%s", message);
+
+    cm.type = 9;
+    strcpy(cm.receiver,username);
+    strcpy(cm.text,message);
+    cm.pids[0] = pids[0];
+    cm.pids[1] = pids[1];
+    msgsnd(msgid_client, &cm, sizeof(cm)-sizeof(long), 0);
+    msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), getpid(), 0);
+    if (rm.feedback == 0)
+        printf("no user found with such username\n");
+}
+
+int receive_user_message() {
+    printf("[%s]: %s\n", sm.sender, sm.text);
+}
+
 int main() {
     pids[1] = fork();
     pids[0] = getpid();
@@ -82,6 +105,9 @@ int main() {
                 case 3:
                     receive_user_list();
                     break;
+                case 9:
+                    receive_user_message();
+                    break;
             }
         }
     }
@@ -90,6 +116,12 @@ int main() {
         int n = login();
 
         request_user_list();
+
+        sleep(1);
+
+        send_user_message();
+
+        sleep(1);
 
         while(n == 0) {
             printf("loop\n");

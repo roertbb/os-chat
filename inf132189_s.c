@@ -3,11 +3,6 @@
 user users[20];
 group groups[10];
 
-// char users[20][8];
-// char groups[10][8];
-
-// int user_status[20][2];
-
 int num_of_users = 0,
     num_of_groups = 0;
 
@@ -94,7 +89,7 @@ void handle_login() {
 void handle_logout() {
     int i;
     for (i=0; i<num_of_users; i++) {
-        if (strcmp(cm.receiver,users[i].username) == 0) {
+        if (cm.pids[0] == users[i].pids[0]) {
             rm.type = cm.pids[0];
             rm.feedback = 1;
             users[i].pids[0] = 0;
@@ -115,22 +110,12 @@ void handle_request_user_list() {
     char username[8];
     int i;
 
-    rm.type = cm.pids[0];
-    rm.feedback = 1;
-    for (i=0; i<20; i++) {
-        if (cm.pids[0] == users[i].pids[0]) {
-            strcpy(username, users[i].username);
-        }
-    }
-    printf("user %s requested user list\n", username);
-    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
-
     char ul[2048] = "";
     
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] > 0) {
             char user[20] = "";
-            char userid[3] = "x. ";
+            char userid[4] = "x. ";
             userid[0] = i + '0' + 1;
             strcat(ul, userid);
             strcat(ul, users[i].username);
@@ -142,6 +127,48 @@ void handle_request_user_list() {
     sm.msg_type = 3;
     strcpy(sm.text, ul);
     msgsnd(msgid_server, &sm, sizeof(sm)-sizeof(long), 0);
+
+    rm.type = cm.pids[0];
+    rm.feedback = 1;
+    for (i=0; i<20; i++) {
+        if (cm.pids[0] == users[i].pids[0]) {
+            strcpy(username, users[i].username);
+        }
+    }
+    printf("user %s requested user list\n", username);
+    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+}
+
+void handle_user_message() {
+    int i, j;
+    char username[8];
+    for (int i=0; i<num_of_users; i++) {
+        if (strcmp(cm.receiver,users[i].username) == 0) {
+            //send message to user
+            sm.type = users[i].pids[1];
+
+            for (j=0; j<num_of_users; j++) {
+                if (users[j].pids[0] == cm.pids[0])
+                    strcpy(username, users[j].username);
+            }
+
+            sm.msg_type = 9;
+            strcpy(sm.sender,username);
+            strcpy(sm.text, cm.text);
+            msgsnd(msgid_server, &sm, sizeof(sm)-sizeof(long), 0);
+            //confirm to client
+            rm.type = cm.pids[0];
+            rm.feedback = 1;
+            printf("user %s send message to %s\n", username, cm.receiver);
+            msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+            return;
+        }
+    }
+    //wrong username
+    rm.type = cm.pids[0];
+    rm.feedback = 0;
+    printf("user %s send message, but with wrong username\n", username);
+    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
 }
 
 int main() {
@@ -173,6 +200,9 @@ int main() {
                 break;
             case 3:
                 handle_request_user_list();
+                break;
+            case 9:
+                handle_user_message();
                 break;
         }
     }
