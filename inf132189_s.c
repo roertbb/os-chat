@@ -56,7 +56,7 @@ void handle_login() {
         if (strcmp(cm.receiver,users[i]) == 0) {
             if (user_status[i] > 0) {
                 //already logged in
-                rm.type = cm.pid;
+                rm.type = cm.pids[0];
                 rm.feedback = 2;
                 printf("attempt to login as %s, but already logged in\n", users[i]);
                 //[TODO]check how many times pid tried to login
@@ -65,19 +65,20 @@ void handle_login() {
             }
             else {
                 //login
-                rm.type = cm.pid;
+                rm.type = cm.pids[0];
                 rm.feedback = 1;
                 printf("user %s logged in\n", users[i]);
                 msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
-                user_status[i] = cm.pid;
+                user_status[i] = cm.pids[0];
+                //what about second pid?
                 return;
             }
         } 
     }
     //no user with such username
-    rm.type = cm.pid;
+    rm.type = cm.pids[0];
     rm.feedback = 0;
-    printf("unsuccessful login by %d\n", cm.pid);
+    printf("unsuccessful login by %d\n", cm.pids[0]);
     //[TODO]check how many times pid tried to login
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);    
 }
@@ -86,7 +87,7 @@ void handle_logout() {
     int i;
     for (i=0; i<num_of_users; i++) {
         if (strcmp(cm.receiver,users[i]) == 0) {
-            rm.type = cm.pid;
+            rm.type = cm.pids[0];
             rm.feedback = 1;
             user_status[i] = 0;
             printf("user %s logged out\n", users[i]);
@@ -95,7 +96,7 @@ void handle_logout() {
         }
     }
     //something went wrong
-    rm.type = cm.pid;
+    rm.type = cm.pids[0];
     rm.feedback = 0;
     printf("user %s couldn't log out\n", users[i]);
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);

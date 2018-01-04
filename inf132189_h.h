@@ -16,6 +16,7 @@
 #include <sys/msg.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
 #define SERVER 1234
 #define CLIENT 1235
@@ -24,7 +25,7 @@
 typedef struct client_msg client_msg;
 struct client_msg {
     long type;
-    int pid;
+    int pids[2];
     char receiver[8];
     char text[2048];
 };

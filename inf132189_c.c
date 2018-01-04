@@ -1,5 +1,7 @@
 #include "inf132189_h.h"
 
+int pids[2];
+
 int msgid_server,
     msgid_client,
     msgid_report; 
@@ -14,9 +16,10 @@ int login() {
     scanf("%s", username);
     cm.type = 1;
     strcpy(cm.receiver, username);
-    cm.pid = getpid();
+    cm.pids[0] = pids[0];
+    cm.pids[1] = pids[1];
     msgsnd(msgid_client, &cm, sizeof(cm)-sizeof(long), 0);
-    msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), getpid(), 0);
+    msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), pids[0], 0);
     if (rm.feedback == 0) {
         printf("Incorrect username\n");
         login();
@@ -37,7 +40,7 @@ int login() {
 
 int logout() {
     cm.type = 2;
-    cm.pid = getpid();
+    cm.pids[0] = pids[0];
     msgsnd(msgid_client, &cm, sizeof(cm)-sizeof(long), 0);
     msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), getpid(), 0);
     if (rm.feedback == 1) {
@@ -50,15 +53,27 @@ int logout() {
 }
 
 int main() {
+    pids[1] = fork();
+    pids[0] = getpid();
+
     msgid_server = msgget(SERVER, IPC_CREAT|0644);
     msgid_client = msgget(CLIENT, IPC_CREAT|0644);
     msgid_report = msgget(REPORT, IPC_CREAT|0644);
 
-    int n = login();
+    if (pids[1] == 0) {
+        // receiving messages
+        while(1);
+    }
+    else {
+        //sending messages
+        int n = login();
 
-    while(n == 0) {
-        printf("loop\n");
-        n = logout();
+        while(n == 0) {
+            printf("loop\n");
+            n = logout();
+        }
+
+        kill(pids[1], SIGKILL);
     }
 
     printf("kthxbye\n");
