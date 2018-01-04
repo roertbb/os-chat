@@ -1,9 +1,12 @@
 #include "inf132189_h.h"
 
-char users[20][8];
-char groups[10][8];
+user users[20];
+group groups[10];
 
-int user_status[20][2];
+// char users[20][8];
+// char groups[10][8];
+
+// int user_status[20][2];
 
 int num_of_users = 0,
     num_of_groups = 0;
@@ -17,6 +20,7 @@ server_msg sm;
 report_msg rm;
 
 void load_config() {
+    int i;
     char buf[8];
     FILE *f;
     f = fopen("config", "r");
@@ -24,12 +28,17 @@ void load_config() {
     if (strcmp(buf,"USERS\n")) {
         fscanf(f, "%s", buf);
         while(strcmp(buf,"GROUPS")) {
-            strcpy(users[num_of_users++],buf);
+            users[num_of_users].pids[0] = 0;
+            users[num_of_users].pids[1] = 0;
+            strcpy(users[num_of_users++].username,buf);
             fscanf(f, "%s", buf);
         }
         fscanf(f, "%s", buf);
         while(strcmp(buf,"END")) {
-            strcpy(groups[num_of_groups++],buf);
+            for (i=0; i<20; i++) {
+                groups[num_of_groups].users[i]=0;
+            }
+            strcpy(groups[num_of_groups++].groupname, buf);
             fscanf(f, "%s", buf);
         }
     }
@@ -38,27 +47,26 @@ void load_config() {
         exit(0);
     }
     fclose(f);
-    memset(user_status, 0, sizeof(user_status[0][0]) * 20 * 2);
-    // int i;
+    
     // printf("%d\n", num_of_users);
     // for (i=0; i<num_of_users; i++) {
-    //     printf("%s",users[i]);
+    //     printf("%s",users[i].username);
     // }
     // printf("\n%d\n", num_of_groups);
     // for (i=0; i<num_of_groups; i++) {
-    //     printf("%s",groups[i]);
+    //     printf("%s",groups[i].groupname);
     // }
 }
 
 void handle_login() {
     int i;
     for (i=0; i<num_of_users; i++) {
-        if (strcmp(cm.receiver,users[i]) == 0) {
-            if (user_status[i][0] > 0) {
+        if (strcmp(cm.receiver,users[i].username) == 0) {
+            if (users[i].pids[0] > 0) {
                 //already logged in
                 rm.type = cm.pids[0];
                 rm.feedback = 2;
-                printf("attempt to login as %s, but already logged in\n", users[i]);
+                printf("attempt to login as %s, but already logged in\n", users[i].username);
                 //[TODO]check how many times pid tried to login
                 msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
                 return;
@@ -67,10 +75,10 @@ void handle_login() {
                 //login
                 rm.type = cm.pids[0];
                 rm.feedback = 1;
-                printf("user %s logged in\n", users[i]);
+                printf("user %s logged in\n", users[i].username);
                 msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
-                user_status[i][0] = cm.pids[0];
-                user_status[i][1] = cm.pids[1];
+                users[i].pids[0] = cm.pids[0];
+                users[i].pids[1] = cm.pids[1];
                 return;
             }
         } 
@@ -86,12 +94,12 @@ void handle_login() {
 void handle_logout() {
     int i;
     for (i=0; i<num_of_users; i++) {
-        if (strcmp(cm.receiver,users[i]) == 0) {
+        if (strcmp(cm.receiver,users[i].username) == 0) {
             rm.type = cm.pids[0];
             rm.feedback = 1;
-            user_status[i][0] = 0;
-            user_status[i][1] = 0;
-            printf("user %s logged out\n", users[i]);
+            users[i].pids[0] = 0;
+            users[i].pids[0] = 0;
+            printf("user %s logged out\n", users[i].username);
             msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
             return;
         }
@@ -99,26 +107,33 @@ void handle_logout() {
     //something went wrong
     rm.type = cm.pids[0];
     rm.feedback = 0;
-    printf("user %s couldn't log out\n", users[i]);
+    printf("user %s couldn't log out\n", users[i].username);
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
 }
 
 void handle_request_user_list() {
+    char username[8];
+    int i;
+
     rm.type = cm.pids[0];
     rm.feedback = 1;
-    printf("user _______ requested user list\n");
+    for (i=0; i<20; i++) {
+        if (cm.pids[0] == users[i].pids[0]) {
+            strcpy(username, users[i].username);
+        }
+    }
+    printf("user %s requested user list\n", username);
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
 
     char ul[2048] = "";
-    int i;
     
     for (i=0; i<num_of_users; i++) {
-        if (user_status[i][0] > 0) {
+        if (users[i].pids[0] > 0) {
             char user[20] = "";
             char userid[3] = "x. ";
             userid[0] = i + '0' + 1;
             strcat(ul, userid);
-            strcat(ul, users[i]);
+            strcat(ul, users[i].username);
             strcat(ul, "\n");
         }
     }

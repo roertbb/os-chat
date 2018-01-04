@@ -50,5 +50,16 @@ struct report_msg {
     int feedback;
 };
 
+typedef struct user user;
+struct user {
+    char username[8];
+    int pids[2];
+};
+
+typedef struct group group;
+struct group {
+    char groupname[8];
+    int users[20];
+};
 
 #endif
