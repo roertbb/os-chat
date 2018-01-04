@@ -3,7 +3,7 @@
 char users[20][8];
 char groups[10][8];
 
-int user_status[20] = {0};
+int user_status[20][2];
 
 int num_of_users = 0,
     num_of_groups = 0;
@@ -38,7 +38,7 @@ void load_config() {
         exit(0);
     }
     fclose(f);
-
+    memset(user_status, 0, sizeof(user_status[0][0]) * 20 * 2);
     // int i;
     // printf("%d\n", num_of_users);
     // for (i=0; i<num_of_users; i++) {
@@ -54,7 +54,7 @@ void handle_login() {
     int i;
     for (i=0; i<num_of_users; i++) {
         if (strcmp(cm.receiver,users[i]) == 0) {
-            if (user_status[i] > 0) {
+            if (user_status[i][0] > 0) {
                 //already logged in
                 rm.type = cm.pids[0];
                 rm.feedback = 2;
@@ -69,8 +69,8 @@ void handle_login() {
                 rm.feedback = 1;
                 printf("user %s logged in\n", users[i]);
                 msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
-                user_status[i] = cm.pids[0];
-                //what about second pid?
+                user_status[i][0] = cm.pids[0];
+                user_status[i][1] = cm.pids[1];
                 return;
             }
         } 
@@ -89,7 +89,8 @@ void handle_logout() {
         if (strcmp(cm.receiver,users[i]) == 0) {
             rm.type = cm.pids[0];
             rm.feedback = 1;
-            user_status[i] = 0;
+            user_status[i][0] = 0;
+            user_status[i][1] = 0;
             printf("user %s logged out\n", users[i]);
             msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
             return;
@@ -100,6 +101,32 @@ void handle_logout() {
     rm.feedback = 0;
     printf("user %s couldn't log out\n", users[i]);
     msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+}
+
+void handle_request_user_list() {
+    rm.type = cm.pids[0];
+    rm.feedback = 1;
+    printf("user _______ requested user list\n");
+    msgsnd(msgid_report, &rm, sizeof(rm)-sizeof(long), 0);
+
+    char ul[2048] = "";
+    int i;
+    
+    for (i=0; i<num_of_users; i++) {
+        if (user_status[i][0] > 0) {
+            char user[20] = "";
+            char userid[3] = "x. ";
+            userid[0] = i + '0' + 1;
+            strcat(ul, userid);
+            strcat(ul, users[i]);
+            strcat(ul, "\n");
+        }
+    }
+
+    sm.type = cm.pids[1];
+    sm.msg_type = 3;
+    strcpy(sm.text, ul);
+    msgsnd(msgid_server, &sm, sizeof(sm)-sizeof(long), 0);
 }
 
 int main() {
@@ -128,6 +155,9 @@ int main() {
                 break;
             case 2:
                 handle_logout();
+                break;
+            case 3:
+                handle_request_user_list();
                 break;
         }
     }

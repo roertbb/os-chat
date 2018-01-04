@@ -52,6 +52,20 @@ int logout() {
     }
 }
 
+int request_user_list() {
+    cm.type = 3;
+    cm.pids[0] = pids[0];
+    cm.pids[1] = pids[1];
+    msgsnd(msgid_client, &cm, sizeof(cm)-sizeof(long), 0);
+    msgrcv(msgid_report, &rm, sizeof(rm)-sizeof(long), getpid(), 0);
+    if (rm.feedback == 0) 
+        printf("couldn't get user list from server\n");
+}
+
+int receive_user_list() {
+    printf("user list:\n%s",sm.text);
+}
+
 int main() {
     pids[1] = fork();
     pids[0] = getpid();
@@ -62,11 +76,20 @@ int main() {
 
     if (pids[1] == 0) {
         // receiving messages
-        while(1);
+        while(1) {
+            msgrcv(msgid_server, &sm, sizeof(sm)-sizeof(long), getpid(), 0);
+            switch(sm.msg_type) {
+                case 3:
+                    receive_user_list();
+                    break;
+            }
+        }
     }
     else {
         //sending messages
         int n = login();
+
+        request_user_list();
 
         while(n == 0) {
             printf("loop\n");

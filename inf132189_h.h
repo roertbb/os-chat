@@ -33,7 +33,7 @@ struct client_msg {
 typedef struct server_msg server_msg;
 struct server_msg {
     long type;
-    int report;
+    int msg_type;
     char sender[8];
     char text[2048];
 };
