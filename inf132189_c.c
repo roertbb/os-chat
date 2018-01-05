@@ -1,5 +1,6 @@
 #include "inf132189_h.h"
 
+// 1
 int login(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     char username[8];
     printf("Enter username: ");
@@ -28,6 +29,7 @@ int login(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, 
     }
 }
 
+// 2
 int logout(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     cm->type = 2;
     cm->pids[0] = pids[0];
@@ -42,6 +44,7 @@ int logout(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm,
     }
 }
 
+// 3
 int request_user_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     cm->type = 3;
     cm->pids[0] = pids[0];
@@ -52,33 +55,16 @@ int request_user_list(int msgid_client, int msgid_report, client_msg * cm, repor
         printf("couldn't get user list from server\n");
 }
 
+// 3
 int receive_user_list(server_msg * sm) {
     printf("user list:\n%s",sm->text);
 }
 
-int send_user_message(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
-    char username[8];
-    char message[2048];
-    printf("enter username: ");
-    scanf("%s", username);
-    printf("enter message: ");
-    scanf("%s", message);
+// 4
 
-    cm->type = 9;
-    strcpy(cm->receiver,username);
-    strcpy(cm->text,message);
-    cm->pids[0] = pids[0];
-    cm->pids[1] = pids[1];
-    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), getpid(), 0);
-    if (rm->feedback == 0)
-        printf("no user found with such username\n");
-}
+// 5
 
-int receive_user_message(server_msg * sm) {
-    printf("[%s]: %s\n", sm->sender, sm->text);
-}
-
+// 6
 int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     char groupname[8];
     printf("enter groupname: ");
@@ -98,6 +84,35 @@ int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm
         printf("Successful enrolled to group %s\n", groupname);
     else if (rm->feedback == 2)
         printf("User already enrolled\n");
+}
+
+// 7
+
+// 8
+
+// 9
+int send_user_message(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char username[8];
+    char message[2048];
+    printf("enter username: ");
+    scanf("%s", username);
+    printf("enter message: ");
+    scanf("%s", message);
+
+    cm->type = 9;
+    strcpy(cm->receiver,username);
+    strcpy(cm->text,message);
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), getpid(), 0);
+    if (rm->feedback == 0)
+        printf("no user found with such username\n");
+}
+
+// 9
+int receive_user_message(server_msg * sm) {
+    printf("[%s]: %s\n", sm->sender, sm->text);
 }
 
 int main() {

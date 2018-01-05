@@ -1,5 +1,6 @@
 #include "inf132189_h.h"
 
+// 0
 void load_config(user * users, group * groups, int * num_of_users, int * num_of_groups) {
     int i;
     char buf[8];
@@ -39,6 +40,7 @@ void load_config(user * users, group * groups, int * num_of_users, int * num_of_
     // }
 }
 
+// 1
 void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, user * users, int num_of_users) {
     int i;
     for (i=0; i<num_of_users; i++) {
@@ -72,6 +74,7 @@ void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_ms
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);    
 }
 
+// 2
 void handle_logout(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, user * users, int num_of_users) {
     int i;
     for (i=0; i<num_of_users; i++) {
@@ -92,6 +95,7 @@ void handle_logout(int msgid_client, int msgid_report, client_msg * cm, report_m
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
+// 3
 void handle_request_user_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
     char username[8];
     int i;
@@ -125,38 +129,11 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
-void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
-    int i, j;
-    char username[8];
-    for (i=0; i<num_of_users; i++) {
-        if (strcmp(cm->receiver,users[i].username) == 0) {
-            //send message to user
-            sm->type = users[i].pids[1];
+// 4
 
-            for (j=0; j<num_of_users; j++) {
-                if (users[j].pids[0] == cm->pids[0])
-                    strcpy(username, users[j].username);
-            }
+// 5
 
-            sm->msg_type = 9;
-            strcpy(sm->sender, username);
-            strcpy(sm->text, cm->text);
-            msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
-            //confirm to client
-            rm->type = cm->pids[0];
-            rm->feedback = 1;
-            printf("user %s send message to %s\n", username, cm->receiver);
-            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
-            return;
-        }
-    }
-    //wrong username
-    rm->type = cm->pids[0];
-    rm->feedback = 0;
-    printf("user %s send message, but with wrong username\n", username);
-    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
-}
-
+// 6
 void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
     int i, j;
     for (i=0; i<num_of_users; i++) {
@@ -192,6 +169,48 @@ void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_m
         }
     }
 }
+
+// 7
+
+// 8
+
+// 9
+void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
+    int i, j;
+    char username[8];
+    for (i=0; i<num_of_users; i++) {
+        if (strcmp(cm->receiver,users[i].username) == 0) {
+            //send message to user
+            sm->type = users[i].pids[1];
+
+            for (j=0; j<num_of_users; j++) {
+                if (users[j].pids[0] == cm->pids[0])
+                    strcpy(username, users[j].username);
+            }
+
+            sm->msg_type = 9;
+            strcpy(sm->sender, username);
+            strcpy(sm->text, cm->text);
+            msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+            //confirm to client
+            rm->type = cm->pids[0];
+            rm->feedback = 1;
+            printf("user %s send message to %s\n", username, cm->receiver);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+            return;
+        }
+    }
+    //wrong username
+    rm->type = cm->pids[0];
+    rm->feedback = 0;
+    printf("user %s send message, but with wrong username\n", username);
+    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+}
+
+// 10
+
+// 11
+
 
 int main() {
     user * users = (user*) malloc(20*sizeof(user));
