@@ -130,6 +130,41 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
 }
 
 // 4
+void handle_request_group_member_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users, group * groups, int num_of_groups) {
+    int i, j;
+    char gl[2048] = "";
+    for (i=0; i<num_of_groups; i++) {
+        if (strcmp(cm->receiver, groups[i].groupname) == 0) {
+            for (j=0; j<num_of_users; j++) {
+                if (groups[i].users[j] == 1) {
+                    char user[20] = "";
+                    char userid[4] = "x. ";
+                    userid[0] = j + '0' + 1;
+                    strcat(gl, userid);
+                    strcat(gl, users[j].username);
+                    strcat(gl, "\n");
+                }
+            }
+
+            sm->type = cm->pids[1];
+            sm->msg_type = 4;
+            strcpy(sm->sender, cm->receiver);
+            strcpy(sm->text, gl);
+            msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+
+            char username[8];
+            rm->type = cm->pids[0];
+            rm->feedback = 1;
+            for (j=0; j<num_of_users; j++) {
+                if (cm->pids[0] == users[j].pids[0]) {
+                    strcpy(username, users[j].username);
+                }
+            }
+            printf("user %s requested member list of group %s\n", username, cm->receiver);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+        }
+    }
+}
 
 // 5
 
@@ -257,6 +292,9 @@ int main() {
                 break;
             case 3:
                 handle_request_user_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users);
+                break;
+            case 4:
+                handle_request_group_member_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users, groups, num_of_groups);
                 break;
             case 6:
                 handle_request_group_enrollemnt(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);

@@ -61,6 +61,27 @@ int receive_user_list(server_msg * sm) {
 }
 
 // 4
+int request_group_member_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char groupname[8];
+    printf("enter groupname: ");
+    scanf("%s", groupname);
+    strcpy(cm->receiver, groupname);
+    cm->type = 4;
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("couldn't get group member list from server\n");
+}
+
+// 4
+int receive_group_member_list(server_msg * sm) {
+    if (strlen(sm->text) <= 3)
+        printf("group %s is empty :(\n", sm->sender);
+    else
+        printf("member list of group %s:\n%s", sm->sender, sm->text);
+}
 
 // 5
 
@@ -83,7 +104,7 @@ int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm
     else if (rm->feedback == 1)
         printf("Successful enrolled to group %s\n", groupname);
     else if (rm->feedback == 2)
-        printf("User already enrolled\n");
+        printf("User already enrolled into group %s\n", groupname);
 }
 
 // 7
@@ -141,6 +162,9 @@ int main() {
                 case 3:
                     receive_user_list(&sm);
                     break;
+                case 4:
+                    receive_group_member_list(&sm);
+                    break;
                 case 9:
                     receive_user_message(&sm);
                     break;
@@ -161,6 +185,9 @@ int main() {
                     break;
                 case 3:
                     request_user_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 4:
+                    request_group_member_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 6:
                     request_group_enrollment(msgid_client, msgid_report, &cm, &rm, pids);
