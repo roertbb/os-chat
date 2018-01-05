@@ -85,6 +85,7 @@ int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm
     scanf("%s", groupname);
 
     strcpy(cm->receiver, groupname);
+    cm->type = 6;
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
 
@@ -145,6 +146,9 @@ int main() {
                     break;
                 case 3:
                     request_user_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 6:
+                    request_group_enrollment(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 9:
                     send_user_message(msgid_client, msgid_report, &cm, &rm, pids);
