@@ -45,23 +45,23 @@ int logout(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm,
 }
 
 // 3
-int request_user_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+int request_users_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     cm->type = 3;
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
-    if (rm->feedback == 0) 
-        printf("couldn't get user list from server\n");
+    // msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    // if (rm->feedback == 0) 
+    //     printf("couldn't get user list from server\n");
 }
 
 // 3
-int receive_user_list(server_msg * sm) {
+int receive_users_list(server_msg * sm) {
     printf("user list:\n%s",sm->text);
 }
 
 // 4
-int request_group_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+int request_groups_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     cm->type = 4;
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
@@ -72,7 +72,7 @@ int request_group_list(int msgid_client, int msgid_report, client_msg * cm, repo
 }
 
 //4
-int receive_group_list(server_msg * sm) {
+int receive_groups_list(server_msg * sm) {
     printf("group list:\n%s", sm->text);
 }
 
@@ -86,9 +86,9 @@ int request_group_member_list(int msgid_client, int msgid_report, client_msg * c
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    // msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
-    // if (rm->feedback == 0)
-    //     printf("couldn't get group member list from server\n");
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("group %s doesn't exist\n", groupname);
 }
 
 // 5
@@ -212,6 +212,23 @@ int request_user_block(int msgid_client, int msgid_report, client_msg * cm, repo
 }
 
 // 11
+int request_group_block(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char groupname[8];
+    printf("enter groupname: ");
+    scanf("%s", groupname);
+
+    cm->type = 11;
+    strcpy(cm->receiver, groupname);
+    cm->pids[0] = pids[0];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("group %s doesn't exist\n", groupname);
+    else if (rm->feedback == 1)
+        printf("group %s has been blocked\n", groupname);
+    else if (rm->feedback == 2)
+        printf("group %s has been already blocked\n", groupname);
+}
 
 int main() {
     int pids[2];
@@ -237,10 +254,10 @@ int main() {
             msgrcv(msgid_server, &sm, sizeof(sm)-sizeof(long), getpid(), 0);
             switch(sm.msg_type) {
                 case 3:
-                    receive_user_list(&sm);
+                    receive_users_list(&sm);
                     break;
                 case 4:
-                    receive_group_list(&sm);
+                    receive_groups_list(&sm);
                     break;
                 case 5:
                     receive_group_member_list(&sm);
@@ -265,10 +282,10 @@ int main() {
                     n = logout(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 3:
-                    request_user_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    request_users_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 4:
-                    request_group_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    request_groups_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 5:
                     request_group_member_list(msgid_client, msgid_report, &cm, &rm, pids);
@@ -288,6 +305,8 @@ int main() {
                 case 10:
                     request_user_block(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
+                case 11:
+                    request_group_block(msgid_client, msgid_report, &cm, &rm, pids);
             }
         }
 

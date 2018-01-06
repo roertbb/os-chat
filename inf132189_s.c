@@ -2,7 +2,7 @@
 
 // 0
 void load_config(user * users, group * groups, int * num_of_users, int * num_of_groups) {
-    int i;
+    int i, j;
     char buf[8];
     FILE *f;
     f = fopen("config", "r");
@@ -29,6 +29,23 @@ void load_config(user * users, group * groups, int * num_of_users, int * num_of_
         exit(0);
     }
     fclose(f);
+
+    for (i=0; i<*num_of_users; i++) {
+        users[i].pids[0] = 0;
+        users[i].pids[1] = 1;
+        for (j=0; j<*num_of_users; j++) {
+            users[i].blocked_users[j] = 0;
+        }
+        for (j=0; j<*num_of_groups; j++) {
+            users[i].blocked_groups[j] = 0;
+        }
+    }
+
+    for (i=0; i<*num_of_groups; i++) {
+        for (j=0; j<*num_of_users; j++) {
+            groups[i].users[j] = 0;
+        }
+    }
     
     // printf("%d\n", num_of_users);
     // for (i=0; i<num_of_users; i++) {
@@ -160,7 +177,16 @@ void handle_request_group_list(int msgid_server, int msgid_report, client_msg * 
 // 5
 void handle_request_group_member_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users, group * groups, int num_of_groups) {
     int i, j;
+    char username[8];
     char gl[2048] = "";
+
+    rm->type = cm->pids[0];
+    for (j=0; j<num_of_users; j++) {
+        if (cm->pids[0] == users[j].pids[0]) {
+            strcpy(username, users[j].username);
+        }
+    }
+
     for (i=0; i<num_of_groups; i++) {
         if (strcmp(cm->receiver, groups[i].groupname) == 0) {
             for (j=0; j<num_of_users; j++) {
@@ -180,18 +206,15 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
             strcpy(sm->text, gl);
             msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
 
-            char username[8];
-            rm->type = cm->pids[0];
             rm->feedback = 1;
-            for (j=0; j<num_of_users; j++) {
-                if (cm->pids[0] == users[j].pids[0]) {
-                    strcpy(username, users[j].username);
-                }
-            }
             printf("user %s requested member list of group %s\n", username, cm->receiver);
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
         }
     }
+    //wrong group name
+    rm->feedback = 0;
+    printf("user %s tried to get group user list of not existing group\n", username);
+    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
 // 6
@@ -231,7 +254,7 @@ void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_m
 }
 
 // 7
-void handle_request_group_sign_off(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
+void handle_request_group_sign_out(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
     int i, j;
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] == cm->pids[0]) {
@@ -319,13 +342,14 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
 
 // 9
 void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
-    int i, j;
+    int i, j, userid;
     char groupname[16], username[8];
 
     // find sender of the message (user)
     for (j=0; j<num_of_users; j++) {
         if (cm->pids[0] == users[j].pids[0]) {
             strcpy(username, users[j].username);
+            userid = j;
         }
     }
 
@@ -340,13 +364,19 @@ void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, r
             
             for (j=0; j<num_of_users; j++) {
                 if (groups[i].users[j] == 1) {
-                    sm->type = users[j].pids[1];
-                    msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+                    if (users[j].blocked_groups[i] == 1) {
+                        // blocked
+                    } 
+                    else {
+                        // send message
+                        sm->type = users[j].pids[1];
+                        msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+                    }
                 }
             }
 
             rm->type = cm->pids[0];
-            rm->feedback = 0;
+            rm->feedback = 1;
             printf("user %s send message to group %s\n", username, cm->receiver);
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
             return;
@@ -370,7 +400,7 @@ void handle_request_user_block(int msgid_report, client_msg * cm, report_msg * r
                     if (users[j].blocked_users[i] == 1) {
                         // already blocked
                         rm->feedback = 2;
-                        printf("user %s requested to block user %s, but %s already blocked", users[j].username, cm->receiver, cm->receiver);
+                        printf("user %s requested to block user %s, but %s is already blocked\n", users[j].username, cm->receiver, cm->receiver);
                     }
                     else {
                         // block
@@ -387,7 +417,7 @@ void handle_request_user_block(int msgid_report, client_msg * cm, report_msg * r
     rm->feedback = 0;
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] == cm->pids[0]) {
-            printf("unsuccessful block request by %s\n", users[i].username);
+            printf("unsuccessful block request by %s, user not found\n", users[i].username);
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
             return;
         }
@@ -395,7 +425,40 @@ void handle_request_user_block(int msgid_report, client_msg * cm, report_msg * r
 }
 
 // 11
+void handle_request_group_block(int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
+    int i, j;
 
+    for (i=0; i<num_of_groups; i++) {
+        if (strcmp(cm->receiver, groups[i].groupname) == 0) {
+            for (j=0; j<num_of_users; j++) {
+                if (users[j].pids[0] == cm->pids[0]) {
+                    if (users[j].blocked_groups[i] == 1) {
+                        // already blocked
+                        rm->feedback = 2;
+                        printf("user %s requested to block group %s, but %s is already blocked\n", users[j].username, cm->receiver, cm->receiver);
+                    }
+                    else {
+                        //block
+                        users[j].blocked_groups[i] = 1;
+                        rm->feedback = 1;
+                        printf("user %s blocked group %s\n", users[j].username, cm->receiver);
+                    }
+                    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+                    return;
+                }
+            }
+        }
+    }
+    rm->feedback = 0;
+    for (i=0; i<num_of_users; i++) {
+        if (users[i].pids[0] == cm->pids[0]) {
+            printf("unsuccessful block request by %s, group not found\n", users[i].username);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+            return;
+        }
+    }
+
+}
 
 int main() {
     user * users = (user*) malloc(20*sizeof(user));
@@ -453,7 +516,7 @@ int main() {
                 handle_request_group_enrollemnt(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
                 break;
             case 7:
-                handle_request_group_sign_off(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
+                handle_request_group_sign_out(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
                 break;
             case 8:
                 handle_user_message(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users);
@@ -463,6 +526,9 @@ int main() {
                 break;
             case 10:
                 handle_request_user_block(msgid_report, &cm, &rm, &sm, users, num_of_users);
+                break;
+            case 11:
+                handle_request_group_block(msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
                 break;
         }
     }
