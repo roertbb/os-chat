@@ -61,31 +61,8 @@ int receive_user_list(server_msg * sm) {
 }
 
 // 4
-int request_group_member_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
-    char groupname[8];
-    printf("enter groupname: ");
-    scanf("%s", groupname);
-    strcpy(cm->receiver, groupname);
-    cm->type = 4;
-    cm->pids[0] = pids[0];
-    cm->pids[1] = pids[1];
-    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
-    if (rm->feedback == 0)
-        printf("couldn't get group member list from server\n");
-}
-
-// 4
-int receive_group_member_list(server_msg * sm) {
-    if (strlen(sm->text) <= 3)
-        printf("group %s is empty :(\n", sm->sender);
-    else
-        printf("member list of group %s:\n%s", sm->sender, sm->text);
-}
-
-// 5
 int request_group_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
-    cm->type = 5;
+    cm->type = 4;
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
@@ -94,9 +71,32 @@ int request_group_list(int msgid_client, int msgid_report, client_msg * cm, repo
         printf("couldn't get group list from server\n");
 }
 
-//5
+//4
 int receive_group_list(server_msg * sm) {
     printf("group list:\n%s", sm->text);
+}
+
+// 5
+int request_group_member_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char groupname[8];
+    printf("enter groupname: ");
+    scanf("%s", groupname);
+    strcpy(cm->receiver, groupname);
+    cm->type = 5;
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("couldn't get group member list from server\n");
+}
+
+// 5
+int receive_group_member_list(server_msg * sm) {
+    if (strlen(sm->text) <= 3)
+        printf("group %s is empty :(\n", sm->sender);
+    else
+        printf("member list of group %s:\n%s", sm->sender, sm->text);
 }
 
 // 6
@@ -144,8 +144,6 @@ int request_group_sign_out(int msgid_client, int msgid_report, client_msg * cm, 
 }
 
 // 8
-
-// 9
 int send_user_message(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     char username[8];
     char message[2048];
@@ -154,7 +152,7 @@ int send_user_message(int msgid_client, int msgid_report, client_msg * cm, repor
     printf("enter message: ");
     scanf("%s", message);
 
-    cm->type = 9;
+    cm->type = 8;
     strcpy(cm->receiver,username);
     strcpy(cm->text,message);
     cm->pids[0] = pids[0];
@@ -165,10 +163,34 @@ int send_user_message(int msgid_client, int msgid_report, client_msg * cm, repor
         printf("no user found with such username\n");
 }
 
-// 9
-int receive_user_message(server_msg * sm) {
+// 8 & 9
+int receive_message(server_msg * sm) {
     printf("[%s]: %s\n", sm->sender, sm->text);
 }
+
+// 9
+int send_group_message(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char groupname[8];
+    char message[2048];
+    printf("enter username: ");
+    scanf("%s", groupname);
+    printf("enter message: ");
+    scanf("%s", message);
+
+    cm->type = 9;
+    strcpy(cm->receiver, groupname);
+    strcpy(cm->text, message);
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("no group found with such username\n");
+}
+
+// 10
+
+// 11
 
 int main() {
     int pids[2];
@@ -197,13 +219,14 @@ int main() {
                     receive_user_list(&sm);
                     break;
                 case 4:
-                    receive_group_member_list(&sm);
-                    break;
-                case 5:
                     receive_group_list(&sm);
                     break;
+                case 5:
+                    receive_group_member_list(&sm);
+                    break;
+                case 8:
                 case 9:
-                    receive_user_message(&sm);
+                    receive_message(&sm);
                     break;
             }
         }
@@ -224,10 +247,10 @@ int main() {
                     request_user_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 4:
-                    request_group_member_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    request_group_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 5:
-                    request_group_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    request_group_member_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 6:
                     request_group_enrollment(msgid_client, msgid_report, &cm, &rm, pids);
@@ -235,8 +258,11 @@ int main() {
                 case 7:
                     request_group_sign_out(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
-                case 9:
+                case 8:
                     send_user_message(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 9:
+                    send_group_message(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
             }
         }

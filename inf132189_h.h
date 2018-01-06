@@ -34,7 +34,7 @@ typedef struct server_msg server_msg;
 struct server_msg {
     long type;
     int msg_type;
-    char sender[8];
+    char sender[16];
     char text[2048];
 };
 

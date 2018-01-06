@@ -130,6 +130,36 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
 }
 
 // 4
+void handle_request_group_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
+    char groupname[8];
+    char gl[2048] = "";
+    int i;
+
+    for (i=0; i<num_of_groups; i++) {
+        char group[20] = "";
+        char groupid[4] = "x. ";
+        groupid[0] = i + '0' + 1;
+        strcat(gl, groupid);
+        strcat(gl, groups[i].groupname);
+        strcat(gl, "\n");
+    }
+
+    sm->type = cm->pids[1];
+    sm->msg_type = 4;
+    strcpy(sm->text, gl);
+    msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+
+    rm->type = cm->pids[0];
+    rm->feedback = 1;
+    for (i=0; i<num_of_users; i++) {
+        if (cm->pids[0] == users[i].pids[0])
+            strcpy(groupname, users[i].username);
+    }
+    printf("user %s requested group list\n", groupname);
+    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+}
+
+// 5
 void handle_request_group_member_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users, group * groups, int num_of_groups) {
     int i, j;
     char gl[2048] = "";
@@ -147,7 +177,7 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
             }
 
             sm->type = cm->pids[1];
-            sm->msg_type = 4;
+            sm->msg_type = 5;
             strcpy(sm->sender, cm->receiver);
             strcpy(sm->text, gl);
             msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
@@ -164,36 +194,6 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
         }
     }
-}
-
-// 5
-void handle_request_group_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
-    char groupname[8];
-    char gl[2048] = "";
-    int i;
-
-    for (i=0; i<num_of_groups; i++) {
-        char group[20] = "";
-        char groupid[4] = "x. ";
-        groupid[0] = i + '0' + 1;
-        strcat(gl, groupid);
-        strcat(gl, groups[i].groupname);
-        strcat(gl, "\n");
-    }
-
-    sm->type = cm->pids[1];
-    sm->msg_type = 5;
-    strcpy(sm->text, gl);
-    msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
-
-    rm->type = cm->pids[0];
-    rm->feedback = 1;
-    for (i=0; i<num_of_users; i++) {
-        if (cm->pids[0] == users[i].pids[0])
-            strcpy(groupname, users[i].username);
-    }
-    printf("user %s requested group list\n", groupname);
-    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
 // 6
@@ -268,8 +268,6 @@ void handle_request_group_sign_off(int msgid_report, client_msg * cm, report_msg
 }
 
 // 8
-
-// 9
 void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
     int i, j;
     char username[8];
@@ -283,14 +281,14 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
                     strcpy(username, users[j].username);
             }
 
-            sm->msg_type = 9;
+            sm->msg_type = 8;
             strcpy(sm->sender, username);
             strcpy(sm->text, cm->text);
             msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
             //confirm to client
             rm->type = cm->pids[0];
             rm->feedback = 1;
-            printf("user %s send message to %s\n", username, cm->receiver);
+            printf("user %s send message to user %s\n", username, cm->receiver);
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
             return;
         }
@@ -300,6 +298,48 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
     rm->feedback = 0;
     printf("user %s send message, but with wrong username\n", username);
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+}
+
+// 9
+void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
+    int i, j;
+    char groupname[16], username[8];
+
+    // find sender of the message (user)
+    for (j=0; j<num_of_users; j++) {
+        if (cm->pids[0] == users[j].pids[0]) {
+            strcpy(username, users[j].username);
+        }
+    }
+
+    for (i=0; i<num_of_groups; i++) {
+        if (strcmp(cm->receiver, groups[i].groupname) == 0) {
+            strcpy(groupname, groups[i].groupname);
+            strcat(groupname, ":");
+            strcat(groupname, username);
+            strcpy(sm->sender,groupname);
+            strcpy(sm->text, cm->text);
+            sm->msg_type = 9;
+            
+            for (j=0; j<num_of_users; j++) {
+                if (groups[i].users[j] == 1) {
+                    sm->type = users[j].pids[1];
+                    msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+                }
+            }
+
+            rm->type = cm->pids[0];
+            rm->feedback = 0;
+            printf("user %s send message to group %s\n", username, cm->receiver);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+            return;
+        }
+    }
+    //wrong groupname
+    rm->type = cm->pids[0];
+    rm->feedback = 0;
+    printf("user %s send message, but with wrong groupname\n", username);
+    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0); 
 }
 
 // 10
@@ -354,10 +394,10 @@ int main() {
                 handle_request_user_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users);
                 break;
             case 4:
-                handle_request_group_member_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users, groups, num_of_groups);
+                handle_request_group_list(msgid_server, msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
                 break;
             case 5:
-                handle_request_group_list(msgid_server, msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
+                handle_request_group_member_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users, groups, num_of_groups);
                 break;
             case 6:
                 handle_request_group_enrollemnt(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
@@ -365,8 +405,11 @@ int main() {
             case 7:
                 handle_request_group_sign_off(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
                 break;
-            case 9:
+            case 8:
                 handle_user_message(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users);
+                break;
+            case 9:
+                handle_group_message(msgid_server, msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
                 break;
         }
     }
