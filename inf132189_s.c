@@ -119,7 +119,6 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
     
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] > 0) {
-            char user[20] = "";
             char userid[4] = "x. ";
             userid[0] = i + '0' + 1;
             strcat(ul, userid);
@@ -151,7 +150,6 @@ void handle_request_group_list(int msgid_server, int msgid_report, client_msg * 
     int i;
 
     for (i=0; i<num_of_groups; i++) {
-        char group[20] = "";
         char groupid[4] = "x. ";
         groupid[0] = i + '0' + 1;
         strcat(gl, groupid);
@@ -191,7 +189,6 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
         if (strcmp(cm->receiver, groups[i].groupname) == 0) {
             for (j=0; j<num_of_users; j++) {
                 if (groups[i].users[j] == 1) {
-                    char user[20] = "";
                     char userid[4] = "x. ";
                     userid[0] = j + '0' + 1;
                     strcat(gl, userid);
@@ -220,11 +217,11 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
 // 6
 void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
     int i, j;
+    rm->type = cm->pids[0];
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] == cm->pids[0]) {
             for (j=0; j<num_of_groups; j++) {
                 if (strcmp(groups[j].groupname,cm->receiver) == 0) {
-                    rm->type = users[i].pids[0];
                     if (groups[j].users[i] == 0) {
                         //success
                         rm->feedback = 1;
@@ -342,14 +339,13 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
 
 // 9
 void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
-    int i, j, userid;
+    int i, j;
     char groupname[16], username[8];
 
     // find sender of the message (user)
     for (j=0; j<num_of_users; j++) {
         if (cm->pids[0] == users[j].pids[0]) {
             strcpy(username, users[j].username);
-            userid = j;
         }
     }
 
