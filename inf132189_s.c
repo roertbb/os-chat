@@ -209,14 +209,13 @@ void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_m
                         rm->feedback = 1;
                         groups[j].users[i] = 1;
                         printf("user %s has been enrolled into group %s\n", users[i].username, groups[j].groupname);
-                        msgsnd(msgid_report, rm, sizeof(report_msg) - sizeof(long), 0);
                     }
                     else {
                         //already in group
                         rm->feedback = 2;
                         printf("user %s already enrolled into group %s\n", users[i].username, groups[j].groupname);
-                        msgsnd(msgid_report, rm, sizeof(report_msg) - sizeof(long), 0);
                     }
+                    msgsnd(msgid_report, rm, sizeof(report_msg) - sizeof(long), 0);
                     return;
                 }
             }
@@ -234,6 +233,39 @@ void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_m
 }
 
 // 7
+void handle_request_group_sign_off(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
+    int i, j;
+    for (i=0; i<num_of_users; i++) {
+        if (users[i].pids[0] == cm->pids[0]) {
+            for (j=0; j<num_of_groups; j++) {
+                if (strcmp(groups[j].groupname, cm->receiver) == 0) {
+                    rm->type = users[i].pids[0];
+                    if (groups[j].users[i] == 1) {
+                        //success
+                        rm->feedback = 1;
+                        groups[j].users[i] = 0;
+                        printf("user %s has signed out from group %s\n", users[i].username, groups[j].groupname);
+                    }
+                    else {
+                        //not enrolled
+                        rm->feedback = 2;
+                        printf("user %s is not enrolled into group %s\n", users[i].username, groups[j].groupname);
+                    }
+                    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+                    return;
+                }
+            }
+        }
+    }
+    rm->feedback = 0;
+    for (i=0; i<num_of_users; i++) {
+        if (users[i].pids[0] == cm->pids[0]) {
+            rm->type = users[i].pids[0];
+            printf("user %s tried to sign out from group %s\n", users[i].username, cm->receiver);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+        }
+    }
+}
 
 // 8
 
@@ -329,6 +361,9 @@ int main() {
                 break;
             case 6:
                 handle_request_group_enrollemnt(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
+                break;
+            case 7:
+                handle_request_group_sign_off(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);
                 break;
             case 9:
                 handle_user_message(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users);

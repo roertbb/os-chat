@@ -116,12 +116,32 @@ int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm
     if (rm->feedback == 0)
         printf("Group %s doesn't exist\n", groupname);
     else if (rm->feedback == 1)
-        printf("Successful enrolled to group %s\n", groupname);
+        printf("Successfully enrolled to group %s\n", groupname);
     else if (rm->feedback == 2)
         printf("User already enrolled into group %s\n", groupname);
 }
 
 // 7
+int request_group_sign_out(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char groupname[8];
+    printf("enter groupname: ");
+    scanf("%s", groupname);
+
+    strcpy(cm->receiver, groupname);
+    cm->type = 7;
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+
+    if (rm->feedback == 0)
+        printf("Group %s doesn't exist\n", groupname);
+    else if (rm->feedback == 1)
+        printf("Successfully signed out from group %s\n", groupname);
+    else if (rm->feedback == 2)
+        printf("User is not enrolled into group %s\n", groupname);
+}
 
 // 8
 
@@ -211,6 +231,9 @@ int main() {
                     break;
                 case 6:
                     request_group_enrollment(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 7:
+                    request_group_sign_out(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 9:
                     send_user_message(msgid_client, msgid_report, &cm, &rm, pids);
