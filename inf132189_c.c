@@ -66,9 +66,9 @@ int request_group_list(int msgid_client, int msgid_report, client_msg * cm, repo
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
-    if (rm->feedback == 0)
-        printf("couldn't get group list from server\n");
+    // msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    // if (rm->feedback == 0)
+    //     printf("couldn't get group list from server\n");
 }
 
 //4
@@ -86,9 +86,9 @@ int request_group_member_list(int msgid_client, int msgid_report, client_msg * c
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
-    if (rm->feedback == 0)
-        printf("couldn't get group member list from server\n");
+    // msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    // if (rm->feedback == 0)
+    //     printf("couldn't get group member list from server\n");
 }
 
 // 5
@@ -149,18 +149,21 @@ int send_user_message(int msgid_client, int msgid_report, client_msg * cm, repor
     char message[2048];
     printf("enter username: ");
     scanf("%s", username);
+    getchar();
     printf("enter message: ");
-    scanf("%s", message);
+    scanf("%[^\n]s", message);
 
     cm->type = 8;
     strcpy(cm->receiver,username);
-    strcpy(cm->text,message);
+    strcpy(cm->text,(char*)message);
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
     msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), getpid(), 0);
     if (rm->feedback == 0)
         printf("no user found with such username\n");
+    else if (rm->feedback == 2)
+        printf("user %s has blocked messages from You\n", cm->receiver);
 }
 
 // 8 & 9
@@ -172,10 +175,11 @@ int receive_message(server_msg * sm) {
 int send_group_message(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
     char groupname[8];
     char message[2048];
-    printf("enter username: ");
+    printf("enter groupname: ");
     scanf("%s", groupname);
+    getchar();
     printf("enter message: ");
-    scanf("%s", message);
+    scanf("%[^\n]s", message);
 
     cm->type = 9;
     strcpy(cm->receiver, groupname);
@@ -189,6 +193,23 @@ int send_group_message(int msgid_client, int msgid_report, client_msg * cm, repo
 }
 
 // 10
+int request_user_block(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    char username[8];
+    printf("enter username: ");
+    scanf("%s", username);
+    
+    cm->type = 10;
+    strcpy(cm->receiver, username);
+    cm->pids[0] = pids[0];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("user %s doesn't exist\n", username);
+    else if (rm->feedback == 1)
+        printf("user %s has been blocked\n", username);
+    else if (rm->feedback == 2)
+        printf("user %s has been already blocked\n", username);
+}
 
 // 11
 
@@ -263,6 +284,9 @@ int main() {
                     break;
                 case 9:
                     send_group_message(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 10:
+                    request_user_block(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
             }
         }

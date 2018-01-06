@@ -2,5 +2,6 @@
     "files.associations": {
         "inf132189_h.h": "c",
         "msg.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

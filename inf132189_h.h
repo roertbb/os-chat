@@ -11,9 +11,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
@@ -54,6 +51,8 @@ typedef struct user user;
 struct user {
     char username[8];
     int pids[2];
+    int blocked_users[20];
+    int blocked_groups[20];
 };
 
 typedef struct group group;

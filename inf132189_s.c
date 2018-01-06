@@ -43,11 +43,11 @@ void load_config(user * users, group * groups, int * num_of_users, int * num_of_
 // 1
 void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, user * users, int num_of_users) {
     int i;
+    rm->type = cm->pids[0];
     for (i=0; i<num_of_users; i++) {
         if (strcmp(cm->receiver,users[i].username) == 0) {
             if (users[i].pids[0] > 0) {
                 //already logged in
-                rm->type = cm->pids[0];
                 rm->feedback = 2;
                 printf("attempt to login as %s, but already logged in\n", users[i].username);
                 //[TODO]check how many times pid tried to login
@@ -56,18 +56,16 @@ void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_ms
             }
             else {
                 //login
-                rm->type = cm->pids[0];
                 rm->feedback = 1;
-                printf("user %s logged in\n", users[i].username);
-                msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
                 users[i].pids[0] = cm->pids[0];
                 users[i].pids[1] = cm->pids[1];
+                printf("user %s logged in\n", users[i].username);
+                msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
                 return;
             }
         } 
     }
     //no user with such username
-    rm->type = cm->pids[0];
     rm->feedback = 0;
     printf("unsuccessful login by %d\n", cm->pids[0]);
     //[TODO]check how many times pid tried to login
@@ -126,7 +124,7 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
         }
     }
     printf("user %s requested user list\n", username);
-    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+    // msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
 // 4
@@ -156,7 +154,7 @@ void handle_request_group_list(int msgid_server, int msgid_report, client_msg * 
             strcpy(groupname, users[i].username);
     }
     printf("user %s requested group list\n", groupname);
-    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+    // msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
 // 5
@@ -271,24 +269,43 @@ void handle_request_group_sign_off(int msgid_report, client_msg * cm, report_msg
 void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
     int i, j;
     char username[8];
+    for (j=0; j<num_of_users; j++) {
+        if (users[j].pids[0] == cm->pids[0]) {
+            strcpy(username, users[j].username);
+        }
+    }
+
     for (i=0; i<num_of_users; i++) {
         if (strcmp(cm->receiver,users[i].username) == 0) {
+            // find sender pid
+            int userid;
+
             //send message to user
             sm->type = users[i].pids[1];
 
             for (j=0; j<num_of_users; j++) {
                 if (users[j].pids[0] == cm->pids[0])
-                    strcpy(username, users[j].username);
+                    userid = j;
             }
 
-            sm->msg_type = 8;
-            strcpy(sm->sender, username);
-            strcpy(sm->text, cm->text);
-            msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
-            //confirm to client
             rm->type = cm->pids[0];
-            rm->feedback = 1;
-            printf("user %s send message to user %s\n", username, cm->receiver);
+            if (users[i].blocked_users[userid] == 0) {
+                // send
+                sm->msg_type = 8;
+                strcpy(sm->sender, username);
+                strcpy(sm->text, cm->text);
+                msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+
+                //confirm to client
+                rm->feedback = 1;
+                printf("user %s send message to user %s\n", username, cm->receiver);
+            }
+            else {
+                // blocked
+                rm->feedback = 2;
+                printf("user %s send message to user %s, but blocked\n", username, cm->receiver);
+            }
+
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
             return;
         }
@@ -343,6 +360,39 @@ void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, r
 }
 
 // 10
+void handle_request_user_block(int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, int num_of_users) {
+    int i, j;
+    rm->type = cm->pids[0];
+    for (i=0; i<num_of_users; i++) {
+        if (strcmp(cm->receiver,users[i].username) == 0) {
+            for (j=0; j<num_of_users; j++) {
+                if (users[j].pids[0] == cm->pids[0]) {
+                    if (users[j].blocked_users[i] == 1) {
+                        // already blocked
+                        rm->feedback = 2;
+                        printf("user %s requested to block user %s, but %s already blocked", users[j].username, cm->receiver, cm->receiver);
+                    }
+                    else {
+                        // block
+                        users[j].blocked_users[i] = 1;
+                        rm->feedback = 1;
+                        printf("user %s blocked user %s\n", users[j].username, cm->receiver);
+                    }
+                    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+                    return;
+                }
+            }
+        }
+    }
+    rm->feedback = 0;
+    for (i=0; i<num_of_users; i++) {
+        if (users[i].pids[0] == cm->pids[0]) {
+            printf("unsuccessful block request by %s\n", users[i].username);
+            msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+            return;
+        }
+    }
+}
 
 // 11
 
@@ -410,6 +460,9 @@ int main() {
                 break;
             case 9:
                 handle_group_message(msgid_server, msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
+                break;
+            case 10:
+                handle_request_user_block(msgid_report, &cm, &rm, &sm, users, num_of_users);
                 break;
         }
     }
