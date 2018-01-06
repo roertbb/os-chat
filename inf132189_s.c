@@ -167,6 +167,34 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
 }
 
 // 5
+void handle_request_group_list(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
+    char groupname[8];
+    char gl[2048] = "";
+    int i;
+
+    for (i=0; i<num_of_groups; i++) {
+        char group[20] = "";
+        char groupid[4] = "x. ";
+        groupid[0] = i + '0' + 1;
+        strcat(gl, groupid);
+        strcat(gl, groups[i].groupname);
+        strcat(gl, "\n");
+    }
+
+    sm->type = cm->pids[1];
+    sm->msg_type = 5;
+    strcpy(sm->text, gl);
+    msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
+
+    rm->type = cm->pids[0];
+    rm->feedback = 1;
+    for (i=0; i<num_of_users; i++) {
+        if (cm->pids[0] == users[i].pids[0])
+            strcpy(groupname, users[i].username);
+    }
+    printf("user %s requested group list\n", groupname);
+    msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
+}
 
 // 6
 void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_msg * rm, user * users, group * groups, int num_of_users, int num_of_groups) {
@@ -295,6 +323,9 @@ int main() {
                 break;
             case 4:
                 handle_request_group_member_list(msgid_server, msgid_report, &cm, &rm, &sm, users, num_of_users, groups, num_of_groups);
+                break;
+            case 5:
+                handle_request_group_list(msgid_server, msgid_report, &cm, &rm, &sm, users, groups, num_of_users, num_of_groups);
                 break;
             case 6:
                 handle_request_group_enrollemnt(msgid_report, &cm, &rm, users, groups, num_of_users, num_of_groups);

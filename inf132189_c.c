@@ -50,7 +50,7 @@ int request_user_list(int msgid_client, int msgid_report, client_msg * cm, repor
     cm->pids[0] = pids[0];
     cm->pids[1] = pids[1];
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
-    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), getpid(), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
     if (rm->feedback == 0) 
         printf("couldn't get user list from server\n");
 }
@@ -84,6 +84,20 @@ int receive_group_member_list(server_msg * sm) {
 }
 
 // 5
+int request_group_list(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
+    cm->type = 5;
+    cm->pids[0] = pids[0];
+    cm->pids[1] = pids[1];
+    msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
+    msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
+    if (rm->feedback == 0)
+        printf("couldn't get group list from server\n");
+}
+
+//5
+int receive_group_list(server_msg * sm) {
+    printf("group list:\n%s", sm->text);
+}
 
 // 6
 int request_group_enrollment(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, int pids[2]) {
@@ -165,6 +179,9 @@ int main() {
                 case 4:
                     receive_group_member_list(&sm);
                     break;
+                case 5:
+                    receive_group_list(&sm);
+                    break;
                 case 9:
                     receive_user_message(&sm);
                     break;
@@ -188,6 +205,9 @@ int main() {
                     break;
                 case 4:
                     request_group_member_list(msgid_client, msgid_report, &cm, &rm, pids);
+                    break;
+                case 5:
+                    request_group_list(msgid_client, msgid_report, &cm, &rm, pids);
                     break;
                 case 6:
                     request_group_enrollment(msgid_client, msgid_report, &cm, &rm, pids);
