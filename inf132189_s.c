@@ -361,14 +361,7 @@ void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, r
             
             for (j=0; j<num_of_users; j++) {
                 if (groups[i].users[j] == 1) {
-                    if (users[j].blocked_groups[i] == 1) {
-                        // blocked
-                    } 
-                    else if(users[j].blocked_users[sender_id] == 1) {
-                        //blocked user
-                    }
-                    else {
-                        // send message
+                    if (users[j].blocked_groups[i] == 0 && users[j].blocked_users[sender_id] == 0) {
                         sm->type = users[j].pids[1];
                         msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
                     }

@@ -191,7 +191,7 @@ void send_group_message(int msgid_client, int msgid_report, client_msg * cm, rep
     msgsnd(msgid_client, cm, sizeof(client_msg)-sizeof(long), 0);
     msgrcv(msgid_report, rm, sizeof(report_msg)-sizeof(long), pids[0], 0);
     if (rm->feedback == 0)
-        printf("no group found with such username\n");
+        printf("no group found with such groupname\n");
 }
 
 // 10
