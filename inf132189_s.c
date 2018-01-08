@@ -339,13 +339,14 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
 
 // 9
 void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, report_msg * rm, server_msg * sm, user * users, group * groups, int num_of_users, int num_of_groups) {
-    int i, j;
+    int i, j, sender_id;
     char groupname[16], username[8];
 
     // find sender of the message (user)
     for (j=0; j<num_of_users; j++) {
         if (cm->pids[0] == users[j].pids[0]) {
             strcpy(username, users[j].username);
+            sender_id = j;
         }
     }
 
@@ -363,6 +364,9 @@ void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, r
                     if (users[j].blocked_groups[i] == 1) {
                         // blocked
                     } 
+                    else if(users[j].blocked_users[sender_id] == 1) {
+                        //blocked user
+                    }
                     else {
                         // send message
                         sm->type = users[j].pids[1];
@@ -456,7 +460,7 @@ void handle_request_group_block(int msgid_report, client_msg * cm, report_msg * 
 
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     user * users = (user*) malloc(20*sizeof(user));
     group * groups = (group*) malloc(10*sizeof(group));
     // user users[20];
