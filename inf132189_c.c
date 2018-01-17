@@ -276,7 +276,7 @@ int main() {
         }
     }
     else {
-        //sending messages
+        //sending messages and waiting for response
         int options;
         int n = login(msgid_client, msgid_report, &cm, &rm, pids);
 

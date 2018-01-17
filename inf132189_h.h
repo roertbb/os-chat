@@ -35,12 +35,6 @@ struct server_msg {
     char text[2048];
 };
 
-/*
-1 - login
-2 - logout
-3 - list of logged in users
-*/
-
 typedef struct report_msg report_msg;
 struct report_msg {
     long type;

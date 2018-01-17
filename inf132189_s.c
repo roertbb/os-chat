@@ -46,15 +46,6 @@ void load_config(user * users, group * groups, int * num_of_users, int * num_of_
             groups[i].users[j] = 0;
         }
     }
-    
-    // printf("%d\n", num_of_users);
-    // for (i=0; i<num_of_users; i++) {
-    //     printf("%s",users[i].username);
-    // }
-    // printf("\n%d\n", num_of_groups);
-    // for (i=0; i<num_of_groups; i++) {
-    //     printf("%s",groups[i].groupname);
-    // }
 }
 
 // 1
@@ -64,15 +55,14 @@ void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_ms
     for (i=0; i<num_of_users; i++) {
         if (strcmp(cm->receiver,users[i].username) == 0) {
             if (users[i].pids[0] > 0) {
-                //already logged in
+                //user already logged in
                 rm->feedback = 2;
                 printf("attempt to login as %s, but already logged in\n", users[i].username);
-                //[TODO]check how many times pid tried to login
                 msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
                 return;
             }
             else {
-                //login
+                //user login
                 rm->feedback = 1;
                 users[i].pids[0] = cm->pids[0];
                 users[i].pids[1] = cm->pids[1];
@@ -85,26 +75,24 @@ void handle_login(int msgid_client, int msgid_report, client_msg * cm, report_ms
     //no user with such username
     rm->feedback = 0;
     printf("unsuccessful login by %d\n", cm->pids[0]);
-    //[TODO]check how many times pid tried to login
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);    
 }
 
 // 2
 void handle_logout(int msgid_client, int msgid_report, client_msg * cm, report_msg * rm, user * users, int num_of_users) {
     int i;
+    rm->type = cm->pids[0];
     for (i=0; i<num_of_users; i++) {
         if (cm->pids[0] == users[i].pids[0]) {
-            rm->type = cm->pids[0];
             rm->feedback = 1;
             users[i].pids[0] = 0;
-            users[i].pids[0] = 0;
+            users[i].pids[1] = 0;
             printf("user %s logged out\n", users[i].username);
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
             return;
         }
     }
-    //something went wrong
-    rm->type = cm->pids[0];
+    //couldn't find user with received pid
     rm->feedback = 0;
     printf("user %s couldn't log out\n", users[i].username);
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
@@ -132,14 +120,14 @@ void handle_request_user_list(int msgid_server, int msgid_report, client_msg * c
     strcpy(sm->text, ul);
     msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
 
-    rm->type = cm->pids[0];
-    rm->feedback = 1;
     for (i=0; i<num_of_users; i++) {
         if (cm->pids[0] == users[i].pids[0]) {
             strcpy(username, users[i].username);
         }
     }
     printf("user %s requested user list\n", username);
+    // rm->type = cm->pids[0];
+    // rm->feedback = 1;
     // msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
@@ -162,13 +150,13 @@ void handle_request_group_list(int msgid_server, int msgid_report, client_msg * 
     strcpy(sm->text, gl);
     msgsnd(msgid_server, sm, sizeof(server_msg)-sizeof(long), 0);
 
-    rm->type = cm->pids[0];
-    rm->feedback = 1;
     for (i=0; i<num_of_users; i++) {
         if (cm->pids[0] == users[i].pids[0])
             strcpy(groupname, users[i].username);
     }
     printf("user %s requested group list\n", groupname);
+    // rm->type = cm->pids[0];
+    // rm->feedback = 1;
     // msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
 }
 
@@ -208,7 +196,7 @@ void handle_request_group_member_list(int msgid_server, int msgid_report, client
             msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
         }
     }
-    //wrong group name
+    //group doesn't exists
     rm->feedback = 0;
     printf("user %s tried to get group user list of not existing group\n", username);
     msgsnd(msgid_report, rm, sizeof(report_msg)-sizeof(long), 0);
@@ -239,7 +227,7 @@ void handle_request_group_enrollemnt(int msgid_report, client_msg * cm, report_m
             }
         }
     }
-    //something went wrong
+    //group doesn't exists
     rm->feedback = 0;
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] == cm->pids[0]) {
@@ -275,6 +263,7 @@ void handle_request_group_sign_out(int msgid_report, client_msg * cm, report_msg
             }
         }
     }
+    //group doesn't exists
     rm->feedback = 0;
     for (i=0; i<num_of_users; i++) {
         if (users[i].pids[0] == cm->pids[0]) {
@@ -300,13 +289,13 @@ void handle_user_message(int msgid_server, int msgid_report, client_msg * cm, re
             // find sender pid
             int userid;
 
-            //send message to user
-            sm->type = users[i].pids[1];
-
             for (j=0; j<num_of_users; j++) {
                 if (users[j].pids[0] == cm->pids[0])
                     userid = j;
             }
+
+            //send message to user
+            sm->type = users[i].pids[1];
 
             rm->type = cm->pids[0];
             if (users[i].blocked_users[userid] == 0) {
@@ -375,7 +364,7 @@ void handle_group_message(int msgid_server, int msgid_report, client_msg * cm, r
             return;
         }
     }
-    //wrong groupname
+    //group doesn't exists
     rm->type = cm->pids[0];
     rm->feedback = 0;
     printf("user %s send message, but with wrong groupname\n", username);
@@ -456,15 +445,13 @@ void handle_request_group_block(int msgid_report, client_msg * cm, report_msg * 
 int main(int argc, char *argv[]) {
     user * users = (user*) malloc(20*sizeof(user));
     group * groups = (group*) malloc(10*sizeof(group));
-    // user users[20];
-    // group groups[10];
 
     int num_of_users = 0,
         num_of_groups = 0;
 
-    int msgid_server, //server 1234
-        msgid_client, //client 1235
-        msgid_report; //report 1236
+    int msgid_server,
+        msgid_client,
+        msgid_report;
 
     client_msg cm;
     server_msg sm;
@@ -480,12 +467,12 @@ int main(int argc, char *argv[]) {
     msgctl(msgid_client,IPC_RMID,NULL);
     msgctl(msgid_report,IPC_RMID,NULL);
 
-    //creatin new
+    //creating new
     msgid_server = msgget(SERVER, IPC_CREAT|0644); 
     msgid_client = msgget(CLIENT, IPC_CREAT|0644);
     msgid_report = msgget(REPORT, IPC_CREAT|0644); 
 
-    printf("chat server\n");
+    printf("chat server is running...\n");
 
     while(1) {
         msgrcv(msgid_client, &cm, sizeof(cm)-sizeof(long), 0, 0);
